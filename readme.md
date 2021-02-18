@@ -34,6 +34,11 @@ https://blog.csdn.net/NicolasLearner/article/details/113756019
 
 https://blog.csdn.net/csdn35772148/article/details/111411587
 
+esp和arduino的连线：
+
+https://blog.csdn.net/RachelKong/article/details/77374620
+（PIN2，PIN3 改为6 7（顺序自己判断））
+
 
 
 ## 4.功能改进
