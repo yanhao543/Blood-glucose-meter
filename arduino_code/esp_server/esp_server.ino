@@ -17,6 +17,10 @@ static WiFiClient espClient;
 #define WIFI_SSID "Honor 8X Max"
 #define WIFI_PASSWD "qwertyui"
 
+static int is_monitor = 0;
+static float save_data = 0.0;
+static int is_save = 0;
+
 void setup() {
   Serial.begin(9600);
   // 初始化 wifi
@@ -25,14 +29,24 @@ void setup() {
   // 初始化 iot，需传入 wifi 的 client，和设备产品信息
   AliyunIoTSDK::begin(espClient, PRODUCT_KEY, DEVICE_NAME, DEVICE_SECRET, REGION_ID);
 
+  // 绑定一个设备属性回调，当远程修改此属性，会触发 monitor_Callback
+  // Monitor_Switch 是在设备产品中定义的物联网模型的 id
+  AliyunIoTSDK::bindData("Monitor_Switch_On", monitor_Callback_On);
+  AliyunIoTSDK::bindData("Monitor_Switch_Off", monitor_Callback_Off);
+
+  AliyunIoTSDK::bindData("Monitor_Is_Save", monitor_Callback_Save);
+
 }
 
 void loop() {
   AliyunIoTSDK::loop();//必要函数
-  AliyunIoTSDK::bindData("Temperature", powerCallback);
+
+  //接收client传来的数据
   String jsonData = recvjson();
   Serial.print("JsonData:");
   Serial.println(jsonData);
+
+  //判断是否有数据传来
   if (jsonData.length() > 0) {
     // const size_t capacity = JSON_OBJECT_SIZE(1) + 10;
     DynamicJsonDocument doc(1024);
@@ -43,16 +57,20 @@ void loop() {
     Serial.print("temperature:");
     Serial.println(temperature);
 
-    // 发送一个数据到云平台，Temperature 是在设备产品中定义的物联网模型的 id
-    AliyunIoTSDK::send("Temperature",temperature);
-    
+    if (is_monitor == 1) {
+      // 发送一个数据到云平台，Temperature 是在设备产品中定义的物联网模型的 id
+      AliyunIoTSDK::send("Temperature", temperature);
+      if (is_save == 1) {
+        save_data = temperature;
+        // AliyunIoTSDK::send("Save_Data", save_data);
+        is_save = 0;
+      }
+    }
     //int numtemp = obj["temp"].as<int>();
     //Serial.print("numtemp:");
     //Serial.println(numtemp);
     //digitalWrite(8, numKey);
     delay(300);
-
-
   }
   else {
     //不做操作
@@ -63,27 +81,50 @@ void loop() {
 // 初始化 wifi 连接
 void wifiInit(const char *ssid, const char *passphrase)
 {
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, passphrase);
-    while (WiFi.status() != WL_CONNECTED)
-    {
-        delay(1000);
-        Serial.println(WL_CONNECTED);
-        Serial.println("WiFi not Connect");
-    }
-    Serial.println("Connected to AP");
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, passphrase);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(1000);
+    Serial.println(WL_CONNECTED);
+    Serial.println("WiFi not Connect");
+  }
+  Serial.println("Connected to AP");
 }
 
-// 电源属性修改的回调函数
-void powerCallback(JsonVariant p)
+// 监测属性修改的回调函数
+void monitor_Callback_On(JsonVariant p)
 {
-    int PowerSwitch = p["PowerSwitch"];
-    if (PowerSwitch == 1)
-    {
-        // 启动设备
-    } 
+  int Monitor_Switch_On = p["monitor_Callback_Save"];
+  if (Monitor_Switch_On == 1)
+  {
+    // 启动监测
+    is_monitor = 1;
+  }
 }
 
+void monitor_Callback_Off(JsonVariant p)
+{
+  int Monitor_Switch_Off = p["Monitor_Switch_Off"];
+  if (Monitor_Switch_Off == 1)
+  {
+    // 关闭监测
+    is_monitor = 0;
+  }
+}
+
+void monitor_Callback_Save(JsonVariant p)
+{
+  int Monitor_Is_Save = p["Monitor_Is_Save"];
+  if (Monitor_Is_Save == 1)
+  {
+    // 开启保存（一次性）
+    is_save = 1;
+  }
+}
+
+/*Json相关函数*/
+//创建Json字符串
 String sendJson(String data) {
   const size_t capacity = JSON_OBJECT_SIZE(1) + 10;
   DynamicJsonDocument doc(capacity);
