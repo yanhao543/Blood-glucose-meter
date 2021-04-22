@@ -31,11 +31,9 @@ void setup() {
 
   // 绑定一个设备属性回调，当远程修改此属性，会触发 monitor_Callback
   // Monitor_Switch 是在设备产品中定义的物联网模型的 id
-  AliyunIoTSDK::bindData("Monitor_Switch_On", monitor_Callback_On);
-  AliyunIoTSDK::bindData("Monitor_Switch_Off", monitor_Callback_Off);
-
+  AliyunIoTSDK::bindData("Monitor_Switch", monitor_Callback);
   AliyunIoTSDK::bindData("Monitor_Is_Save", monitor_Callback_Save);
-
+  
 }
 
 void loop() {
@@ -93,32 +91,19 @@ void wifiInit(const char *ssid, const char *passphrase)
 }
 
 // 监测属性修改的回调函数
-void monitor_Callback_On(JsonVariant p)
+void monitor_Callback(JsonVariant p)
 {
-  int Monitor_Switch_On = p["monitor_Callback_Save"];
-  if (Monitor_Switch_On == 1)
-  {
-    // 启动监测
-    is_monitor = 1;
-  }
+  int Monitor_Switch = p["Monitor_Switch"];
+  is_monitor = Monitor_Switch;
 }
 
-void monitor_Callback_Off(JsonVariant p)
-{
-  int Monitor_Switch_Off = p["Monitor_Switch_Off"];
-  if (Monitor_Switch_Off == 1)
-  {
-    // 关闭监测
-    is_monitor = 0;
-  }
-}
 
 void monitor_Callback_Save(JsonVariant p)
 {
   int Monitor_Is_Save = p["Monitor_Is_Save"];
   if (Monitor_Is_Save == 1)
   {
-    // 开启保存（一次性）
+    // 开启保存（一次性）（上传一次需要保存的数据）
     is_save = 1;
   }
 }

@@ -13,8 +13,13 @@ static WiFiClient espClient;
 #define REGION_ID "cn-shanghai"
  
 // 设置 wifi 信息
-#define WIFI_SSID "Honor 8X Max"
-#define WIFI_PASSWD "qwertyui"
+#define WIFI_SSID "realme X7 Pro"
+#define WIFI_PASSWD "12345678"
+
+static int is_monitor = 0;
+static float save_data = 0.0;
+static int is_save = 0;
+float temperature = 26;
 
 void setup()
 {
@@ -27,23 +32,25 @@ void setup()
     AliyunIoTSDK::begin(espClient, PRODUCT_KEY, DEVICE_NAME, DEVICE_SECRET, REGION_ID);
     
     // 绑定一个设备属性回调，当远程修改此属性，会触发 powerCallback
-    // PowerSwitch 是在设备产品中定义的物联网模型的 id
-    //AliyunIoTSDK::bindData("PowerSwitch", powerCallback);
-    
-    // 发送一个数据到云平台，LightLuminance 是在设备产品中定义的物联网模型的 id
-    //AliyunIoTSDK::send("CurrentTemperature",26);
+    AliyunIoTSDK::bindData("Monitor_Switch", monitor_Callback);
+    //AliyunIoTSDK::bindData("Monitor_Switch_Off", monitor_Callback_Off);
+    AliyunIoTSDK::bindData("Monitor_Is_Save", monitor_Callback_Save);
 }
 
 void loop()
 {
     AliyunIoTSDK::loop();//必要函数
-    // 绑定一个设备属性回调，当远程修改此属性，会触发 powerCallback
-    // Temperature 是在设备产品中定义的物联网模型的 id
-    AliyunIoTSDK::bindData("Temperature", powerCallback);
     
-    // 发送一个数据到云平台，Temperature 是在设备产品中定义的物联网模型的 id
-    AliyunIoTSDK::send("Temperature",26);
-    delay(5000);
+    if (is_monitor == 1) {
+        // 发送一个数据到云平台，Temperature 是在设备产品中定义的物联网模型的 id
+        AliyunIoTSDK::send("Temperature", temperature);
+        if (is_save == 1) {
+            save_data = temperature - 1;
+            AliyunIoTSDK::send("Save_Data", save_data);
+            is_save = 0;
+        }
+    }
+    delay(1000);
 }
 
 // 初始化 wifi 连接
@@ -60,12 +67,22 @@ void wifiInit(const char *ssid, const char *passphrase)
     Serial.println("Connected to AP");
 }
 
-// 电源属性修改的回调函数
-void powerCallback(JsonVariant p)
+// 监测属性修改的回调函数
+void monitor_Callback(JsonVariant p)
 {
-    int PowerSwitch = p["PowerSwitch"];
-    if (PowerSwitch == 1)
-    {
-        // 启动设备
-    } 
+  int Monitor_Switch = p["Monitor_Switch"];
+  //if (Monitor_Switch_On == 1)
+  // 改变监测状态
+  is_monitor = Monitor_Switch;
+  Serial.println(is_monitor);
+}
+
+void monitor_Callback_Save(JsonVariant p)
+{
+  int Monitor_Is_Save = p["Monitor_Is_Save"];
+  if (Monitor_Is_Save == 1)
+  {
+    // 开启保存（一次性）（上传一次需要保存的数据）
+    is_save = 1;
+  }
 }
